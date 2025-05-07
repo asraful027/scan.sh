@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Nmap scan: basic top-1000 TCP ports
+nmap_scan() {
+  DOMAIN="$1"
+  OUTPUT_DIR="$2"
+  echo "[*] Running nmap scan on $DOMAIN..."
+  nmap -T4 -Pn -sS --top-ports 1000 "$DOMAIN" -oN "$OUTPUT_DIR/nmap"
+}
+
+# Dirsearch scan: brute-force directories (uses ffuf if dirsearch not found)
+dirsearch_scan() {
+  DOMAIN="$1"
+  OUTPUT_DIR="$2"
+  echo "[*] Running directory scan on $DOMAIN..."
+
+  if command -v dirsearch >/dev/null 2>&1; then
+    dirsearch -u "https://$DOMAIN" -e php,html,txt -o "$OUTPUT_DIR/dirsearch"
+  elif command -v ffuf >/dev/null 2>&1; then
+    ffuf -u "https://$DOMAIN/FUZZ" -w /usr/share/wordlists/dirb/common.txt -o "$OUTPUT_DIR/dirsearch" -of csv
+  else
+    echo "[!] Neither dirsearch nor ffuf found." > "$OUTPUT_DIR/dirsearch"
+  fi
+}
+
+# crt.sh scan: fetch public certs and extract subdomains
+crt_scan() {
+  DOMAIN="$1"
+  OUTPUT_DIR="$2"
+  echo "[*] Querying crt.sh for $DOMAIN..."
+
+  curl -s "https://crt.sh/?q=%25.$DOMAIN&output=json" -o "$OUTPUT_DIR/crt"
+}
